@@ -1,0 +1,39 @@
+# Configuration for open models (no authentication required)
+
+model:
+  # Use an open model for testing without authentication
+  # Options: microsoft/phi-2, EleutherAI/gpt-neo-1.3B, distilgpt2
+  name: microsoft/phi-2
+  device: auto
+  load_in_8bit: false
+  use_flash_attention: false
+
+data:
+  max_length: 512
+  input_column: text
+  target_column: null
+  validation_split: 0.1
+
+training:
+  num_epochs: 3
+  per_device_batch_size: 4
+  gradient_accumulation_steps: 4
+  warmup_steps: 100
+  learning_rate: 2e-5
+  fp16: true
+  logging_steps: 10
+  save_steps: 500
+  eval_steps: 500
+  save_total_limit: 2
+
+generation:
+  max_new_tokens: 256
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 50
+  do_sample: true
+  num_return_sequences: 1
+  batch_size: 1
+
+evaluation:
+  batch_size: 8

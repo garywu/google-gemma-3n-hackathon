@@ -1,25 +1,60 @@
 # Gemma Model Configuration
-model_name: "google/gemma-2b"  # Can be gemma-2b or gemma-7b
+
+model:
+  # Note: Gemma models require HuggingFace authentication
+  # To use Gemma: 1) Accept license at https://huggingface.co/google/gemma-2b
+  #               2) Run: python setup_huggingface.py
+  # For testing without auth, use: microsoft/phi-2
+  name: gemma-2b
+  device: auto
+  load_in_8bit: false
+  use_flash_attention: true
+  checkpoint_path: null  # Path to fine-tuned checkpoint (optional)
+
+data:
+  max_length: 512
+  input_column: text
+  target_column: null  # For instruction tuning, set to 'output' or similar
+  validation_split: 0.1
+
+training:
+  num_epochs: 3
+  per_device_batch_size: 4
+  gradient_accumulation_steps: 4
+  warmup_steps: 100
+  learning_rate: 2e-5
+  fp16: true
+  logging_steps: 10
+  save_steps: 500
+  eval_steps: 500
+  save_total_limit: 2
+
+generation:
+  max_new_tokens: 256
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 50
+  do_sample: true
+  num_return_sequences: 1
+  batch_size: 1
+
+evaluation:
+  batch_size: 8
+
+# Legacy parameters (for backward compatibility)
+model_name: "google/gemma-2b"
 max_length: 512
 batch_size: 8
-
-# Training parameters
 epochs: 3
 learning_rate: 2e-5
 warmup_steps: 500
 weight_decay: 0.01
 gradient_accumulation_steps: 1
-
-# Generation parameters
 max_new_tokens: 100
 temperature: 0.7
 top_p: 0.9
 do_sample: true
-
-# Data parameters
 data_dir: "data"
 output_dir: "outputs"
-
-# Hardware
 use_fp16: true
 device_map: "auto"

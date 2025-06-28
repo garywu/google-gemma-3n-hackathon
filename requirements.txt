@@ -48,3 +48,10 @@ pytest-cov>=4.1.0
 black>=23.9.0
 flake8>=6.1.0
 mypy>=1.5.0
+
+# Structured outputs and optimization
+pydantic>=2.5.0
+instructor>=0.4.0
+dspy-ai>=2.4.0
+openai>=1.0.0  # Required by instructor
+anthropic>=0.8.0  # Optional for instructor

@@ -10,9 +10,9 @@ NC := \033[0m
 
 # Python environment detection
 PYTHON := $(shell command -v python3 || command -v python)
-PIP := $(shell command -v pip3 || command -v pip)
-VENV := venv
-VENV_ACTIVATE := . $(VENV)/bin/activate
+UV := $(shell command -v uv)
+VENV := .venv
+VENV_PYTHON := $(VENV)/bin/python
 
 # Framework detection
 IS_DJANGO := $(shell [ -f "manage.py" ] && echo "yes")
@@ -42,179 +42,185 @@ help: ## Show this help message
 
 # ========== Environment Setup ==========
 
+.PHONY: check-uv
+check-uv:
+	@if [ -z "$(UV)" ]; then \
+		echo "$(RED)UV is not installed. Please install it with:$(NC)"; \
+		echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		echo "  or"; \
+		echo "  pip install uv"; \
+		exit 1; \
+	fi
+
 .PHONY: venv
-venv: ## Create virtual environment
-	@echo "$(BLUE)Creating virtual environment...$(NC)"
-	@$(PYTHON) -m venv $(VENV)
+venv: check-uv ## Create virtual environment with UV
+	@echo "$(BLUE)Creating virtual environment with UV...$(NC)"
+	@$(UV) venv $(VENV)
 	@echo "$(GREEN)Virtual environment created! Activate with: source $(VENV)/bin/activate$(NC)"
 
 .PHONY: install
-install: ## Install dependencies
-	@echo "$(BLUE)Installing dependencies...$(NC)"
-ifeq ($(HAS_POETRY),yes)
-	@poetry install
-else
-	@$(VENV_ACTIVATE) && $(PIP) install -r requirements.txt
-	@[ -f requirements-dev.txt ] && $(VENV_ACTIVATE) && $(PIP) install -r requirements-dev.txt || true
-endif
+install: check-uv ## Install dependencies with UV
+	@echo "$(BLUE)Installing dependencies with UV...$(NC)"
+	@$(UV) pip install -r requirements.txt
+	@[ -f requirements-dev.txt ] && $(UV) pip install -r requirements-dev.txt || true
 	@echo "$(GREEN)Dependencies installed!$(NC)"
 
 .PHONY: install-dev
-install-dev: install ## Install development dependencies
-	@echo "$(BLUE)Installing development dependencies...$(NC)"
-ifeq ($(HAS_POETRY),yes)
-	@poetry install --with dev
-else
-	@$(VENV_ACTIVATE) && $(PIP) install -r requirements-dev.txt || echo "No requirements-dev.txt found"
-endif
+install-dev: check-uv ## Install development dependencies with UV
+	@echo "$(BLUE)Installing development dependencies with UV...$(NC)"
+	@$(UV) pip install -r requirements.txt
+	@[ -f requirements-dev.txt ] && $(UV) pip install -r requirements-dev.txt || echo "No requirements-dev.txt found"
 
 .PHONY: freeze
-freeze: ## Freeze dependencies
-	@echo "$(BLUE)Freezing dependencies...$(NC)"
-ifeq ($(HAS_POETRY),yes)
-	@poetry export -f requirements.txt --output requirements.txt
-else
-	@$(VENV_ACTIVATE) && $(PIP) freeze > requirements.txt
-endif
+freeze: check-uv ## Freeze dependencies with UV
+	@echo "$(BLUE)Freezing dependencies with UV...$(NC)"
+	@$(UV) pip freeze > requirements.txt
+
+.PHONY: setup
+setup: check-uv ## Quick setup: create venv and install deps
+	@echo "$(BLUE)Setting up project with UV...$(NC)"
+	@$(UV) venv $(VENV)
+	@$(UV) pip install -r requirements.txt
+	@echo "$(GREEN)Setup complete! Activate with: source $(VENV)/bin/activate$(NC)"
 
 # ========== Development ==========
 
 .PHONY: dev
-dev: ## Start development server
+dev: check-uv ## Start development server
 	@echo "$(BLUE)Starting development server...$(NC)"
 ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py runserver
+	@$(UV) run python manage.py runserver
 else ifeq ($(IS_FLASK),)
-	@$(VENV_ACTIVATE) && flask run --debug
+	@$(UV) run flask run --debug
 else ifeq ($(IS_FASTAPI),)
-	@$(VENV_ACTIVATE) && uvicorn main:app --reload || uvicorn app.main:app --reload
+	@$(UV) run uvicorn main:app --reload || $(UV) run uvicorn app.main:app --reload
 else
-	@$(VENV_ACTIVATE) && python main.py || python app.py || echo "No main entry point found"
+	@$(UV) run python main.py || $(UV) run python app.py || echo "No main entry point found"
 endif
 
 .PHONY: shell
-shell: ## Start Python shell
+shell: check-uv ## Start Python shell
 	@echo "$(BLUE)Starting Python shell...$(NC)"
 ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py shell
+	@$(UV) run python manage.py shell
 else
-	@$(VENV_ACTIVATE) && ipython || python
+	@$(UV) run ipython || $(UV) run python
 endif
 
 .PHONY: run
-run: ## Run the application
+run: check-uv ## Run the application
 	@echo "$(BLUE)Running application...$(NC)"
-	@$(VENV_ACTIVATE) && python main.py || python app.py || python -m app
+	@$(UV) run python main.py || $(UV) run python app.py || $(UV) run python -m app
 
 # ========== Testing ==========
 
 .PHONY: test
-test: ## Run tests
+test: check-uv ## Run tests
 	@echo "$(BLUE)Running tests...$(NC)"
 ifeq ($(HAS_PYTEST),yes)
-	@$(VENV_ACTIVATE) && pytest
+	@$(UV) run pytest
 else ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py test
+	@$(UV) run python manage.py test
 else
-	@$(VENV_ACTIVATE) && python -m unittest discover
+	@$(UV) run python -m unittest discover
 endif
 
 .PHONY: test-watch
-test-watch: ## Run tests in watch mode
+test-watch: check-uv ## Run tests in watch mode
 	@echo "$(BLUE)Running tests in watch mode...$(NC)"
-	@$(VENV_ACTIVATE) && pytest-watch || ptw || echo "Install pytest-watch for watch mode"
+	@$(UV) run pytest-watch || $(UV) run ptw || echo "Install pytest-watch for watch mode"
 
 .PHONY: test-coverage
-test-coverage: ## Run tests with coverage
+test-coverage: check-uv ## Run tests with coverage
 	@echo "$(BLUE)Running tests with coverage...$(NC)"
-	@$(VENV_ACTIVATE) && pytest --cov=. --cov-report=html --cov-report=term || python -m coverage run -m pytest
+	@$(UV) run pytest --cov=. --cov-report=html --cov-report=term || $(UV) run python -m coverage run -m pytest
 
 .PHONY: coverage-report
-coverage-report: ## Show coverage report
-	@$(VENV_ACTIVATE) && coverage report
+coverage-report: check-uv ## Show coverage report
+	@$(UV) run coverage report
 	@echo "$(GREEN)HTML report available at htmlcov/index.html$(NC)"
 
 # ========== Code Quality ==========
 
 .PHONY: lint
-lint: ## Run linters
+lint: check-uv ## Run linters
 	@echo "$(BLUE)Running linters...$(NC)"
-	@$(VENV_ACTIVATE) && flake8 . || echo "Flake8 not installed"
-	@$(VENV_ACTIVATE) && pylint **/*.py || echo "Pylint not installed"
-	@$(VENV_ACTIVATE) && mypy . || echo "Mypy not installed"
+	@$(UV) run flake8 . || echo "Flake8 not installed"
+	@$(UV) run pylint **/*.py || echo "Pylint not installed"
+	@$(UV) run mypy . || echo "Mypy not installed"
 
 .PHONY: format
-format: ## Format code with black and isort
+format: check-uv ## Format code with black and isort
 	@echo "$(BLUE)Formatting code...$(NC)"
-	@$(VENV_ACTIVATE) && black . || echo "Black not installed"
-	@$(VENV_ACTIVATE) && isort . || echo "isort not installed"
+	@$(UV) run black . || echo "Black not installed"
+	@$(UV) run isort . || echo "isort not installed"
 
 .PHONY: format-check
-format-check: ## Check code formatting
+format-check: check-uv ## Check code formatting
 	@echo "$(BLUE)Checking code format...$(NC)"
-	@$(VENV_ACTIVATE) && black --check . || echo "Black not installed"
-	@$(VENV_ACTIVATE) && isort --check-only . || echo "isort not installed"
+	@$(UV) run black --check . || echo "Black not installed"
+	@$(UV) run isort --check-only . || echo "isort not installed"
 
 .PHONY: type-check
-type-check: ## Run type checking
+type-check: check-uv ## Run type checking
 	@echo "$(BLUE)Type checking...$(NC)"
-	@$(VENV_ACTIVATE) && mypy . || echo "Mypy not installed"
+	@$(UV) run mypy . || echo "Mypy not installed"
 
 .PHONY: security
-security: ## Run security checks
+security: check-uv ## Run security checks
 	@echo "$(BLUE)Running security checks...$(NC)"
-	@$(VENV_ACTIVATE) && bandit -r . || echo "Bandit not installed"
-	@$(VENV_ACTIVATE) && safety check || echo "Safety not installed"
+	@$(UV) run bandit -r . || echo "Bandit not installed"
+	@$(UV) run safety check || echo "Safety not installed"
 
 # ========== Database (Django/SQLAlchemy) ==========
 
 .PHONY: db-migrate
-db-migrate: ## Run database migrations
+db-migrate: check-uv ## Run database migrations
 	@echo "$(BLUE)Running migrations...$(NC)"
 ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py migrate
+	@$(UV) run python manage.py migrate
 else ifeq ($(HAS_ALEMBIC),yes)
-	@$(VENV_ACTIVATE) && alembic upgrade head
+	@$(UV) run alembic upgrade head
 else
 	@echo "No migration system detected"
 endif
 
 .PHONY: db-makemigrations
-db-makemigrations: ## Create new migrations
+db-makemigrations: check-uv ## Create new migrations
 	@echo "$(BLUE)Creating migrations...$(NC)"
 ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py makemigrations
+	@$(UV) run python manage.py makemigrations
 else ifeq ($(HAS_ALEMBIC),yes)
-	@$(VENV_ACTIVATE) && alembic revision --autogenerate -m "$(MSG)"
+	@$(UV) run alembic revision --autogenerate -m "$(MSG)"
 else
 	@echo "No migration system detected"
 endif
 
 .PHONY: db-reset
-db-reset: ## Reset database
+db-reset: check-uv ## Reset database
 	@echo "$(RED)Resetting database...$(NC)"
 ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py flush --no-input
-	@$(VENV_ACTIVATE) && python manage.py migrate
+	@$(UV) run python manage.py flush --no-input
+	@$(UV) run python manage.py migrate
 else
 	@echo "Database reset not configured"
 endif
 
 .PHONY: db-seed
-db-seed: ## Seed database with sample data
+db-seed: check-uv ## Seed database with sample data
 	@echo "$(BLUE)Seeding database...$(NC)"
 ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py loaddata fixtures/*.json || echo "No fixtures found"
+	@$(UV) run python manage.py loaddata fixtures/*.json || echo "No fixtures found"
 else
-	@$(VENV_ACTIVATE) && python seed.py || python -m app.seed || echo "No seed script found"
+	@$(UV) run python seed.py || $(UV) run python -m app.seed || echo "No seed script found"
 endif
 
 # ========== API Documentation ==========
 
 .PHONY: docs
-docs: ## Generate documentation
+docs: check-uv ## Generate documentation
 	@echo "$(BLUE)Generating documentation...$(NC)"
-	@$(VENV_ACTIVATE) && sphinx-build -b html docs docs/_build || echo "Sphinx not configured"
+	@$(UV) run sphinx-build -b html docs docs/_build || echo "Sphinx not configured"
 
 .PHONY: docs-serve
 docs-serve: ## Serve documentation
@@ -227,7 +233,7 @@ api-docs: ## Generate API documentation
 ifeq ($(IS_FASTAPI),)
 	@echo "FastAPI automatic docs at: http://localhost:8000/docs"
 else ifeq ($(IS_FLASK),)
-	@$(VENV_ACTIVATE) && flask-apispec || echo "Install flask-apispec for API docs"
+	@$(UV) run flask-apispec || echo "Install flask-apispec for API docs"
 else
 	@echo "API documentation not configured"
 endif
@@ -237,23 +243,23 @@ endif
 ifeq ($(IS_DJANGO),yes)
 .PHONY: django-admin
 django-admin: ## Django admin commands (usage: make django-admin CMD="...")
-	@$(VENV_ACTIVATE) && python manage.py $(CMD)
+	@$(UV) run python manage.py $(CMD)
 
 .PHONY: django-shell
 django-shell: ## Django shell
-	@$(VENV_ACTIVATE) && python manage.py shell_plus || python manage.py shell
+	@$(UV) run python manage.py shell_plus || python manage.py shell
 
 .PHONY: django-static
 django-static: ## Collect static files
-	@$(VENV_ACTIVATE) && python manage.py collectstatic --no-input
+	@$(UV) run python manage.py collectstatic --no-input
 
 .PHONY: django-check
 django-check: ## Django system check
-	@$(VENV_ACTIVATE) && python manage.py check
+	@$(UV) run python manage.py check
 
 .PHONY: django-superuser
 django-superuser: ## Create superuser
-	@$(VENV_ACTIVATE) && python manage.py createsuperuser
+	@$(UV) run python manage.py createsuperuser
 endif
 
 # ========== Deployment ==========
@@ -297,7 +303,7 @@ deps-check: ## Check for outdated dependencies
 ifeq ($(HAS_POETRY),yes)
 	@poetry show --outdated
 else
-	@$(VENV_ACTIVATE) && pip list --outdated
+	@$(UV) run pip list --outdated
 endif
 
 .PHONY: deps-update
@@ -306,13 +312,13 @@ deps-update: ## Update dependencies
 ifeq ($(HAS_POETRY),yes)
 	@poetry update
 else
-	@$(VENV_ACTIVATE) && pip install --upgrade -r requirements.txt
+	@$(UV) run pip install --upgrade -r requirements.txt
 endif
 
 .PHONY: deps-audit
 deps-audit: ## Audit dependencies for security issues
 	@echo "$(BLUE)Auditing dependencies...$(NC)"
-	@$(VENV_ACTIVATE) && pip-audit || safety check || echo "Install pip-audit or safety"
+	@$(UV) run pip-audit || safety check || echo "Install pip-audit or safety"
 
 # ========== Utilities ==========
 
@@ -326,9 +332,9 @@ env-check: ## Check environment variables
 routes: ## List API routes
 	@echo "$(BLUE)API Routes:$(NC)"
 ifeq ($(IS_DJANGO),yes)
-	@$(VENV_ACTIVATE) && python manage.py show_urls || echo "Install django-extensions"
+	@$(UV) run python manage.py show_urls || echo "Install django-extensions"
 else ifeq ($(IS_FLASK),)
-	@$(VENV_ACTIVATE) && flask routes
+	@$(UV) run flask routes
 else ifeq ($(IS_FASTAPI),)
 	@echo "FastAPI routes available at: http://localhost:8000/docs"
 endif
@@ -336,15 +342,15 @@ endif
 .PHONY: profile
 profile: ## Profile application
 	@echo "$(BLUE)Profiling application...$(NC)"
-	@$(VENV_ACTIVATE) && python -m cProfile -o profile.out main.py
-	@$(VENV_ACTIVATE) && python -m pstats profile.out
+	@$(UV) run python -m cProfile -o profile.out main.py
+	@$(UV) run python -m pstats profile.out
 
 # ========== Git Hooks ==========
 
 .PHONY: install-hooks
 install-hooks: ## Install pre-commit hooks
 	@echo "$(BLUE)Installing git hooks...$(NC)"
-	@$(VENV_ACTIVATE) && pre-commit install || echo "Install pre-commit first"
+	@$(UV) run pre-commit install || echo "Install pre-commit first"
 
 .PHONY: pre-commit
 pre-commit: format lint type-check test ## Run pre-commit checks

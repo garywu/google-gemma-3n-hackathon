@@ -1,6 +1,61 @@
-# Google Gemma 3N Hackathon Project
+# Google Gemma 3N Hackathon Project 🚀
 
-This project is built for the [Google Gemma 3N Hackathon](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/), leveraging the Gemma family of models for advanced language processing tasks.
+A **production-ready framework** for the [Google Gemma 3N Hackathon](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/) that transforms Google's Gemma models into reliable AI systems with:
+
+- ⚡ **2-5x faster training** with Unsloth optimization
+- 🎯 **100% structured outputs** with Pydantic + Instructor
+- 🧠 **Self-optimizing prompts** with DSPy
+- 🔍 **Comprehensive evaluation** with Inspect AI
+- 🌐 **Production API** with FastAPI
+
+## 🏆 Key Features
+
+### 1. **Structured Outputs** - Never Parse JSON Again!
+```python
+# Always get valid, typed responses
+analysis = pipeline.instructor.analyze_code(code)
+print(f"Score: {analysis.score}/10")  # Guaranteed float!
+print(f"Issues: {analysis.improvements}")  # Always a list!
+```
+
+### 2. **Lightning-Fast Training** - Unsloth Integration
+```python
+# Train 2-5x faster with 70% less memory
+model = GemmaModelUnsloth("gemma-2b-4bit")
+model.train(dataset)  # Optimized with LoRA + 4-bit
+```
+
+### 3. **Self-Optimizing** - DSPy Magic
+```python
+# No more prompt engineering!
+optimized = dspy.compile(generator, examples)
+# Automatically finds best prompts for YOUR data
+```
+
+### 4. **Production API** - Ready to Deploy
+```python
+# Reliable API with guaranteed responses
+POST /analyze-code
+POST /generate-tests
+POST /debug-code
+# All return validated JSON every time!
+```
+
+## 🚀 Quick Start
+
+```bash
+# 1. Create environment with UV (fast!)
+make setup
+
+# 2. Activate environment
+source .venv/bin/activate.fish  # or .venv/bin/activate for bash
+
+# 3. Run interactive chat
+python main.py chat
+
+# 4. Start API server
+python api_server.py
+```
 
 ## Project Structure
 
@@ -8,7 +63,11 @@ This project is built for the [Google Gemma 3N Hackathon](https://www.kaggle.com
 google-gemma-3n-hackathon/
 ├── src/
 │   ├── models/         # Model implementations
+│   │   ├── gemma_model.py         # Base Gemma wrapper
+│   │   └── gemma_model_unsloth.py # Optimized with Unsloth
 │   ├── data/          # Data loading and preprocessing
+│   ├── structured/    # Pydantic + Instructor + DSPy
+│   └── evaluation/    # Inspect AI integration
 │   └── utils/         # Utility functions
 ├── notebooks/         # Jupyter notebooks for experimentation
 ├── main.py           # Main entry point

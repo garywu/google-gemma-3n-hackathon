@@ -36,6 +36,7 @@ data/
 *.csv
 *.json
 *.txt
+!requirements.txt
 *.h5
 *.pkl
 *.pt

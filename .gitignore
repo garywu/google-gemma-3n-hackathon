@@ -31,8 +31,8 @@ env/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# Data
-data/
+# Data (datasets only, not source code)
+/data/
 *.csv
 *.json
 *.txt
@@ -42,9 +42,9 @@ data/
 *.pt
 *.pth
 
-# Models
-models/
-checkpoints/
+# Models (weights/checkpoints only, not source code)
+/models/
+/checkpoints/
 *.bin
 *.safetensors
 
